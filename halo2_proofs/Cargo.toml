@@ -80,6 +80,7 @@ gadget-traces = ["backtrace"]
 sanity-checks = []
 batch = ["rand_core/getrandom"]
 circuit-params = []
+zkml = []
 
 [lib]
 bench = false
