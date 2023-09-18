@@ -422,6 +422,7 @@ impl<F: Field> Assignment<F> for MockProver<F> {
             .expect("bound failure"))
     }
 
+    #[cfg(not(feature = "zkml"))]
     fn assign_advice<V, VR, A, AR>(
         &mut self,
         _: A,
@@ -461,14 +462,65 @@ impl<F: Field> Assignment<F> for MockProver<F> {
                     .get_mut(column.index())
                     .and_then(|v| v.get_mut(row))
                     .expect("bounds failure");
-                #[cfg(not(feature = "zkml"))]
+                
                 if let CellValue::Assigned(value) = value {
                     // Inconsistent assignment between different phases.
                     assert_eq!(value, &to, "value={:?}, to={:?}", value, &to);
                 } else {
                     *value = CellValue::Assigned(to);
                 }
-                #[cfg(feature = "zkml")]
+            }
+            Err(err) => {
+                // Propagate `assign` error if the column is in current phase.
+                if self.in_phase(column.column_type().phase) {
+                    return Err(err);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    #[cfg(feature = "zkml")]
+    fn assign_advice<V, VR, A, AR>(
+        &mut self,
+        _: A,
+        column: Column<Advice>,
+        row: usize,
+        to: V,
+    ) -> Result<(), Error>
+    where
+        V: FnOnce() -> circuit::Value<VR>,
+        VR: Into<Assigned<F>>,
+        A: FnOnce() -> AR,
+        AR: Into<String>,
+    {
+        if self.in_phase(FirstPhase) {
+            assert!(
+                self.usable_rows.contains(&row),
+                "row={}, usable_rows={:?}, k={}",
+                row,
+                self.usable_rows,
+                self.k,
+            );
+
+            if let Some(region) = self.current_region.as_mut() {
+                region.update_extent(column.into(), row);
+                region
+                    .cells
+                    .entry((column.into(), row))
+                    .and_modify(|count| *count += 1)
+                    .or_default();
+            }
+        }
+
+        match to().into_field().evaluate().assign() {
+            Ok(to) => {
+                let value = self
+                    .advice
+                    .get_mut(column.index())
+                    .and_then(|v| v.get_mut(row))
+                    .expect("bounds failure");
                 *value = CellValue::Assigned(to);
             }
             Err(err) => {
