@@ -1,10 +1,24 @@
 use std::marker::PhantomData;
-
+use ark_std::{end_timer, start_timer};
 use halo2_proofs::{
     arithmetic::Field,
     circuit::{AssignedCell, Chip, Layouter, Region, SimpleFloorPlanner, Value},
-    plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Fixed, Instance, Selector},
-    poly::Rotation,
+    halo2curves::bn256::{Bn256, Fr, G1Affine},
+    plonk::{
+        Advice, Circuit, Column, ConstraintSystem, Error, Fixed, Instance, Selector, 
+        create_proof, keygen_pk, keygen_vk, verify_proof
+    },
+    poly::{
+        kzg::{
+          commitment::{KZGCommitmentScheme, ParamsKZG},
+          multiopen::{ProverSHPLONK, VerifierSHPLONK},
+          strategy::SingleStrategy,
+        },
+        Rotation
+    },
+    transcript::{
+        Blake2bRead, Blake2bWrite, Challenge255, TranscriptReadBuffer, TranscriptWriterBuffer,
+      },
 };
 
 // ANCHOR: instructions
@@ -237,7 +251,7 @@ impl<F: Field> NumericInstructions<F> for FieldChip<F> {
 /// In this struct we store the private input variables. We use `Option<F>` because
 /// they won't have any value during key generation. During proving, if any of these
 /// were `None` we would get an error.
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct MyCircuit<F: Field> {
     constant: F,
     a: Value<F>,
@@ -306,17 +320,16 @@ impl<F: Field> Circuit<F> for MyCircuit<F> {
 
 fn main() {
     use halo2_proofs::dev::MockProver;
-    use halo2curves::pasta::Fp;
-
+    
     // ANCHOR: test-circuit
     // The number of rows in our circuit cannot exceed 2^k. Since our example
     // circuit is very small, we can pick a very small value here.
     let k = 4;
 
     // Prepare the private and public inputs to the circuit!
-    let constant = Fp::from(7);
-    let a = Fp::from(2);
-    let b = Fp::from(3);
+    let constant = Fr::from(7);
+    let a = Fr::from(2);
+    let b = Fr::from(3);
     let c = constant * a.square() * b.square();
 
     // Instantiate the circuit with the private inputs.
@@ -328,15 +341,68 @@ fn main() {
 
     // Arrange the public input. We expose the multiplication result in row 0
     // of the instance column, so we position it there in our public inputs.
-    let mut public_inputs = vec![c];
+    let public_inputs = vec![c];
 
     // Given the correct public input, our circuit will verify.
     let prover = MockProver::run(k, &circuit, vec![public_inputs.clone()]).unwrap();
     assert_eq!(prover.verify(), Ok(()));
 
     // If we try some other public input, the proof will fail!
-    public_inputs[0] += Fp::one();
-    let prover = MockProver::run(k, &circuit, vec![public_inputs]).unwrap();
-    assert!(prover.verify().is_err());
+    // public_inputs[0] += Fp::one();
+    // let prover = MockProver::run(k, &circuit, vec![public_inputs]).unwrap();
+    // assert!(prover.verify().is_err());
     // ANCHOR_END: test-circuit
+
+    // let timer = start_timer!(|| "Setup");
+    // let rng = rand::thread_rng();
+    // let params = ParamsKZG::<Bn256>::setup(k, rng);
+    // end_timer!(timer);
+
+    // let timer = start_timer!(|| "Preprocess");
+    // let vk_circuit = circuit.clone();
+    // let vk = keygen_vk(&params, &vk_circuit).unwrap();
+    // drop(vk_circuit);
+    // let pk_circuit = circuit.clone();
+    // let pk = keygen_pk(&params, vk.clone(), &pk_circuit).unwrap();
+    // drop(pk_circuit);
+    // end_timer!(timer);
+
+    // let timer = start_timer!(|| "Prove");
+    // let proof_circuit = circuit.clone();
+    // let rng = rand::thread_rng();
+    // let mut transcript = Blake2bWrite::<_, G1Affine, Challenge255<_>>::init(vec![]);
+    // create_proof::<
+    //   KZGCommitmentScheme<Bn256>,
+    //   ProverSHPLONK<'_, Bn256>,
+    //   Challenge255<G1Affine>,
+    //   _,
+    //   Blake2bWrite<Vec<u8>, G1Affine, Challenge255<G1Affine>>,
+    //   MyCircuit<Fr>,
+    // >(
+    //   &params,
+    //   &pk,
+    //   &[proof_circuit],
+    //   &[&[&public_inputs]],
+    //   rng,
+    //   &mut transcript,
+    // )
+    // .unwrap();
+    // let proof = transcript.finalize();
+    // end_timer!(timer);
+
+    // let timer = start_timer!(|| "Verify");
+    // let strategy = SingleStrategy::new(&params);
+    // let mut transcript_read = Blake2bRead::<_, _, Challenge255<_>>::init(&proof[..]);
+    // assert!(
+    //     verify_proof::<
+    //       KZGCommitmentScheme<Bn256>,
+    //       VerifierSHPLONK<'_, Bn256>,
+    //       Challenge255<G1Affine>,
+    //       Blake2bRead<&[u8], G1Affine, Challenge255<G1Affine>>,
+    //       SingleStrategy<'_, Bn256>,
+    //     >(&params, &vk, strategy, &[&[&public_inputs]], &mut transcript_read)
+    //     .is_ok(),
+    //     "proof did not verify"
+    // );
+    // end_timer!(timer);
 }

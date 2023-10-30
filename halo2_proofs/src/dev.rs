@@ -748,6 +748,35 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
         }
 
         let (cs, selector_polys) = prover.cs.compress_selectors(prover.selectors.clone());
+
+        #[cfg(feature = "stats")] 
+        {
+            println!("num_fixed_column: {}", cs.num_fixed_columns);
+            println!("num_advice_columns: {}", cs.num_advice_columns);
+            println!("num_instance_columns: {}", cs.num_instance_columns);
+            println!("num_selector_columns: {}", cs.num_selectors);
+            println!("num_gate_types: {}", cs.gates.len());
+            println!("num_gate_queried: {:?}", cs.gates.iter().map(|x| {
+                (x.name(), x.queried_selectors().len(), x.polynomials().iter().map(|y| y.degree()).collect::<Vec<_>>())
+            }).collect::<Vec<_>>());
+            println!("num_lookups: {}", cs.lookups.len());
+            println!("fixed_columns_rows: {:?}", prover.fixed.iter().map(|x| x.len()).collect::<Vec<_>>());
+            println!("advice_columns_rows: {:?}", prover.advice.iter().map(|x| x.len()).collect::<Vec<_>>());
+            println!(
+                "assigned_fixed_columns_rows: {:?}",
+                prover.fixed.iter().map(|x| x.iter().filter(|y| matches!(y, CellValue::Assigned {..} )).collect::<Vec<_>>().len()).collect::<Vec<_>>()
+            );
+    
+            println!(
+                "assigned_advice_columns_rows: {:?}", 
+                prover.advice.iter().map(|x| x.iter().filter(|y| matches!(y, CellValue::Assigned {..} )).collect::<Vec<_>>().len()).collect::<Vec<_>>()
+            );
+    
+            println!("instance_columns_rows: {:?}", prover.instance.iter().map(|x| x.len()).collect::<Vec<_>>());
+            println!("permutations: {}", prover.permutation.mapping().len());
+        }
+
+
         prover.cs = cs;
         prover.fixed.extend(selector_polys.into_iter().map(|poly| {
             let mut v = vec![CellValue::Unassigned; n];
@@ -756,6 +785,9 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
             }
             v
         }));
+
+        
+        
 
         Ok(prover)
     }

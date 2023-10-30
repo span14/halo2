@@ -149,11 +149,12 @@ where
         // Guard is updated with new msm contributions
         let guard = f(self.msm)?;
         let msm = guard.msm_accumulator;
-        if msm.check() {
+        let result = if msm.check() {
             Ok(())
         } else {
             Err(Error::ConstraintSystemFailure)
-        }
+        };
+        result
     }
 
     fn finalize(self) -> bool {
