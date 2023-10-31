@@ -751,15 +751,37 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
 
         #[cfg(feature = "stats")] 
         {
+            let original = |column, row| {
+                cs
+                    .permutation
+                    .get_columns()
+                    .get(column)
+                    .map(|c: &Column<Any>| match c.column_type() {
+                        Any::Advice(_) => prover.advice[c.index()][row],
+                        Any::Fixed => prover.fixed[c.index()][row],
+                        Any::Instance => CellValue::Assigned(prover.instance[c.index()][row]),
+                    })
+                    .unwrap()
+            };
             println!("num_fixed_column: {}", cs.num_fixed_columns);
             println!("num_advice_columns: {}", cs.num_advice_columns);
             println!("num_instance_columns: {}", cs.num_instance_columns);
             println!("num_selector_columns: {}", cs.num_selectors);
             println!("num_gate_types: {}", cs.gates.len());
             println!("num_gate_queried: {:?}", cs.gates.iter().map(|x| {
-                (x.name(), x.queried_selectors().len(), x.polynomials().iter().map(|y| y.degree()).collect::<Vec<_>>())
+                let count = prover.regions.iter().fold(0, |acc, r| {
+                    let appearance = r
+                        .enabled_selectors
+                        .iter()
+                        .filter(|(s, _)| x.queried_selectors().contains(s))
+                        .fold(0, |acc, (_, p)| acc + p.len());
+
+                    appearance + acc
+                });
+                (x.name(), count, x.polynomials().iter().map(|y| y.degree()).collect::<Vec<_>>())
             }).collect::<Vec<_>>());
-            println!("num_lookups: {}", cs.lookups.len());
+            // Not Confirmed on this one
+            println!("num_lookups: {:?}", cs.lookups.iter().map(|x| x.input_expressions.len()).collect::<Vec<_>>());
             println!("fixed_columns_rows: {:?}", prover.fixed.iter().map(|x| x.len()).collect::<Vec<_>>());
             println!("advice_columns_rows: {:?}", prover.advice.iter().map(|x| x.len()).collect::<Vec<_>>());
             println!(
@@ -773,7 +795,16 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
             );
     
             println!("instance_columns_rows: {:?}", prover.instance.iter().map(|x| x.len()).collect::<Vec<_>>());
-            println!("permutations: {}", prover.permutation.mapping().len());
+            println!(
+                "permutations: {}", 
+                prover.permutation.mapping().iter().enumerate().fold(0, |acc, (c, p)| {
+                    p.iter().enumerate().filter(|(r, ce)| {
+                        let original_cell = original(c, *r);
+                        let permuted_cell = original(ce.0, ce.1);
+                        original_cell != permuted_cell
+                    }).collect::<Vec<_>>().len() + acc
+                })
+            );
         }
 
 
