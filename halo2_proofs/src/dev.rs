@@ -751,18 +751,6 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
 
         #[cfg(feature = "stats")] 
         {
-            let original = |column, row| {
-                cs
-                    .permutation
-                    .get_columns()
-                    .get(column)
-                    .map(|c: &Column<Any>| match c.column_type() {
-                        Any::Advice(_) => prover.advice[c.index()][row],
-                        Any::Fixed => prover.fixed[c.index()][row],
-                        Any::Instance => CellValue::Assigned(prover.instance[c.index()][row]),
-                    })
-                    .unwrap()
-            };
             println!("num_fixed_column: {}", cs.num_fixed_columns);
             println!("num_advice_columns: {}", cs.num_advice_columns);
             println!("num_instance_columns: {}", cs.num_instance_columns);
@@ -799,9 +787,7 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
                 "permutations: {}", 
                 prover.permutation.mapping().iter().enumerate().fold(0, |acc, (c, p)| {
                     p.iter().enumerate().filter(|(r, ce)| {
-                        let original_cell = original(c, *r);
-                        let permuted_cell = original(ce.0, ce.1);
-                        original_cell != permuted_cell
+                        (c, *r) != (ce.0, ce.1)
                     }).collect::<Vec<_>>().len() + acc
                 })
             );
