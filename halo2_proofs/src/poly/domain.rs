@@ -7,7 +7,7 @@ use crate::{
 };
 
 use super::{Coeff, ExtendedLagrangeCoeff, LagrangeCoeff, Polynomial, Rotation};
-
+use ark_std::{end_timer, start_timer};
 use group::ff::{BatchInvert, Field, PrimeField};
 
 use std::marker::PhantomData;
@@ -225,10 +225,10 @@ impl<G: Group> EvaluationDomain<G> {
     /// length.
     pub fn lagrange_to_coeff(&self, mut a: Polynomial<G, LagrangeCoeff>) -> Polynomial<G, Coeff> {
         assert_eq!(a.values.len(), 1 << self.k);
-
+        let timer = start_timer!(|| format!("ifft-{}", a.values.len()));
         // Perform inverse FFT to obtain the polynomial in coefficient form
         Self::ifft(&mut a.values, self.omega_inv, self.k, self.ifft_divisor);
-
+        end_timer!(timer);
         Polynomial {
             values: a.values,
             _marker: PhantomData,
@@ -242,11 +242,11 @@ impl<G: Group> EvaluationDomain<G> {
         mut a: Polynomial<G, Coeff>,
     ) -> Polynomial<G, ExtendedLagrangeCoeff> {
         assert_eq!(a.values.len(), 1 << self.k);
-
+        let timer = start_timer!(|| format!("fft-{}", a.values.len()));
         self.distribute_powers_zeta(&mut a.values, true);
         a.values.resize(self.extended_len(), G::group_zero());
         best_fft(&mut a.values, self.extended_omega, self.extended_k);
-
+        end_timer!(timer);
         Polynomial {
             values: a.values,
             _marker: PhantomData,
@@ -280,7 +280,7 @@ impl<G: Group> EvaluationDomain<G> {
     // TODO/FIXME: caller should be responsible for truncating
     pub fn extended_to_coeff(&self, mut a: Polynomial<G, ExtendedLagrangeCoeff>) -> Vec<G> {
         assert_eq!(a.values.len(), self.extended_len());
-
+        let timer = start_timer!(|| format!("ifft-{}", a.values.len()));
         // Inverse FFT
         Self::ifft(
             &mut a.values,
@@ -298,7 +298,7 @@ impl<G: Group> EvaluationDomain<G> {
         // it always lies on a power-of-two boundary.
         a.values
             .truncate((&self.n * self.quotient_poly_degree) as usize);
-
+        end_timer!(timer);
         a.values
     }
 

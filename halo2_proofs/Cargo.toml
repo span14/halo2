@@ -44,6 +44,7 @@ name = "fft"
 harness = false
 
 [dependencies]
+ark-std = { version = "^0.4.0", default-features = false}
 backtrace = { version = "0.3", optional = true }
 rayon = "1.5.1"
 ff = "0.12"
@@ -74,6 +75,8 @@ dev-graph = ["plotters", "tabbycat"]
 gadget-traces = ["backtrace"]
 sanity-checks = []
 batch = ["rand_core/getrandom"]
+print-trace = ["ark-std/print-trace"]
+stats = []
 
 [lib]
 bench = false
