@@ -448,7 +448,7 @@ impl<G: Group> EvaluationDomain<G> {
         while (1 << extended_k) < (n * quotient_poly_degree) {
             extended_k += 1;
         }
-        println!("k: {}, extended_k: {}", k, extended_k);
+        // println!("k: {}, extended_k: {}", k, extended_k);
 
         let mut extended_omega = G::Scalar::root_of_unity();
 
