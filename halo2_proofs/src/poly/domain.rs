@@ -247,7 +247,7 @@ impl<F: WithSmallOrderMulGroup<3>> EvaluationDomain<F> {
     ) -> Polynomial<F, ExtendedLagrangeCoeff> {
         assert_eq!(a.values.len(), 1 << self.k);
 
-        let timer = start_timer!(|| format!("fft-{}", self.extended_k));
+        let timer = start_timer!(|| format!("fft-{}", self.extended_len()));
 
         self.distribute_powers_zeta(&mut a.values, true);
         a.values.resize(self.extended_len(), F::ZERO);
