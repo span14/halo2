@@ -649,7 +649,7 @@ impl<G: Group> EvaluationDomain<G> {
         assert_eq!(a.values.len(), 1 << self.k);
 
         #[cfg(feature = "profile")]
-        let timer = start_timer!(|| format!("ifft-{}", coeffs.len()));
+        let timer = start_timer!(|| format!("ifft-{}", a.values.len()));
 
         // Perform inverse FFT to obtain the polynomial in coefficient form
         self.ifft(&mut a.values, self.omega_inv, self.k, self.ifft_divisor);
