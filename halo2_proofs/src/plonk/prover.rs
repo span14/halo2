@@ -75,6 +75,9 @@ where
         MULTIEXP_TOTAL_TIME = 0;
     }
 
+    #[cfg(feature = "profile")]
+    let prove_time = start_timer!(|| "Prover");
+
     for instance in instances.iter() {
         if instance.len() != pk.vk.cs.num_instance_columns {
             return Err(Error::InvalidInstances);
@@ -499,7 +502,7 @@ where
     end_timer!(phase2_time);
 
     #[cfg(feature = "profile")]
-    let phase3a_time = start_timer!(|| "Phase 3a: Commit to permutations");
+    let phase3_time = start_timer!(|| "Phase 3: Commit to permutations");
 
     // Sample beta challenge
     let beta: ChallengeBeta<_> = transcript.squeeze_challenge_scalar();
@@ -531,10 +534,10 @@ where
         })
         .collect::<Vec<_>>();
     #[cfg(feature = "profile")]
-    end_timer!(phase3a_time);
+    end_timer!(phase3_time);
 
     #[cfg(feature = "profile")]
-    let phase3b_time = start_timer!(|| "Phase 3b: Lookup commit product");
+    let phase4_time = start_timer!(|| "Phase 4: Lookup commit product");
     let lookups: Vec<Vec<lookup::prover::Committed<Scheme::Curve>>> = lookups
         .into_iter()
         .map(|lookups| -> Vec<_> {
@@ -550,10 +553,10 @@ where
         })
         .collect();
     #[cfg(feature = "profile")]
-    end_timer!(phase3b_time);
+    end_timer!(phase4_time);
 
     #[cfg(feature = "profile")]
-    let vanishing_time = start_timer!(|| "Commit to vanishing argument's random poly");
+    let phase5_time = start_timer!(|| "Phase 5: Commit to vanishing argument's random poly");
     // Commit to the vanishing argument's random polynomial for blinding h(x_3)
     let vanishing = vanishing::Argument::commit(params, domain, &mut rng, transcript).unwrap();
 
@@ -561,9 +564,9 @@ where
     let y: ChallengeY<_> = transcript.squeeze_challenge_scalar();
 
     #[cfg(feature = "profile")]
-    end_timer!(vanishing_time);
+    end_timer!(phase5_time);
     #[cfg(feature = "profile")]
-    let fft_time = start_timer!(|| "Calculate advice polys (fft)");
+    let phase6_time = start_timer!(|| "Phase 6: Calculate advice polys (fft)");
 
     // Calculate the advice polys
     let advice: Vec<AdviceSingle<Scheme::Curve, Coeff>> = advice
@@ -584,10 +587,10 @@ where
         )
         .collect();
     #[cfg(feature = "profile")]
-    end_timer!(fft_time);
+    end_timer!(phase6_time);
 
     #[cfg(feature = "profile")]
-    let phase4_time = start_timer!(|| "Phase 4: Evaluate h(X)");
+    let phase7_time = start_timer!(|| "Phase 7: Evaluate h(X)");
     // Evaluate the h(X) polynomial
     let h_poly = pk.ev.evaluate_h(
         pk,
@@ -608,16 +611,16 @@ where
         &permutations,
     );
     #[cfg(feature = "profile")]
-    end_timer!(phase4_time);
+    end_timer!(phase7_time);
 
     #[cfg(feature = "profile")]
-    let timer = start_timer!(|| "Commit to vanishing argument's h(X) commitments");
+    let phase8_time = start_timer!(|| "Phase 8: Commit to vanishing argument's h(X) commitments");
     // Construct the vanishing argument's h(X) commitments
     let vanishing = vanishing.construct(params, domain, h_poly, &mut rng, transcript)?;
     #[cfg(feature = "profile")]
-    end_timer!(timer);
+    end_timer!(phase8_time);
     #[cfg(feature = "profile")]
-    let eval_time = start_timer!(|| "Commit to vanishing argument's h(X) commitments");
+    let phase9_time = start_timer!(|| "Phase 9: Commit to vanishing argument's h(X) commitments");
 
     let x: ChallengeX<_> = transcript.squeeze_challenge_scalar();
     let xn = x.pow(&[params.n(), 0, 0, 0]);
@@ -700,7 +703,7 @@ where
         })
         .collect();
     #[cfg(feature = "profile")]
-    end_timer!(eval_time);
+    end_timer!(phase9_time);
 
     let instances = instance
         .iter()
@@ -751,12 +754,16 @@ where
         .chain(vanishing.open(x));
 
     #[cfg(feature = "profile")]
-    let multiopen_time = start_timer!(|| "Phase 5: multiopen");
+    let phase10 = start_timer!(|| "Phase 10: multiopen");
     let prover = P::new(params);
     let multiopen_res = prover
         .create_proof(&mut rng, transcript, instances)
         .map_err(|_| Error::ConstraintSystemFailure);
     #[cfg(feature = "profile")]
-    end_timer!(multiopen_time);
+    end_timer!(phase10);
+
+    #[cfg(feature = "profile")]
+    end_timer!(prove_time);
+
     multiopen_res
 }

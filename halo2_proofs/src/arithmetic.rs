@@ -3,6 +3,8 @@
 
 use super::multicore;
 pub use ff::Field;
+#[cfg(feature = "profile")]
+use ark_std::{end_timer, start_timer};
 use group::{
     ff::{BatchInvert, PrimeField},
     Curve, Group as _,
@@ -136,6 +138,8 @@ pub fn best_multiexp<C: CurveAffine>(coeffs: &[C::Scalar], bases: &[C]) -> C::Cu
     assert_eq!(coeffs.len(), bases.len());
 
     //println!("msm: {}", coeffs.len());
+    #[cfg(feature = "profile")]
+    let timer = start_timer!(|| format!("msm-{}", coeffs.len()));
 
     let start = get_time();
     let num_threads = multicore::current_num_threads();
@@ -162,6 +166,9 @@ pub fn best_multiexp<C: CurveAffine>(coeffs: &[C::Scalar], bases: &[C]) -> C::Cu
         multiexp_serial(coeffs, bases, &mut acc);
         acc
     };
+    
+    #[cfg(feature = "profile")]
+    end_timer!(timer);
 
     let duration = get_duration(start);
     #[allow(unsafe_code)]

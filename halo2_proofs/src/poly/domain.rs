@@ -8,6 +8,8 @@ use crate::{
 };
 
 use super::{Coeff, ExtendedLagrangeCoeff, LagrangeCoeff, Polynomial, Rotation};
+#[cfg(feature = "profile")]
+use ark_std::{end_timer, start_timer};
 
 use group::ff::{BatchInvert, Field, PrimeField};
 
@@ -646,8 +648,14 @@ impl<G: Group> EvaluationDomain<G> {
     ) -> Polynomial<G::Scalar, Coeff> {
         assert_eq!(a.values.len(), 1 << self.k);
 
+        #[cfg(feature = "profile")]
+        let timer = start_timer!(|| format!("ifft-{}", coeffs.len()));
+
         // Perform inverse FFT to obtain the polynomial in coefficient form
         self.ifft(&mut a.values, self.omega_inv, self.k, self.ifft_divisor);
+
+        #[cfg(feature = "profile")]
+        end_timer!(timer);
 
         Polynomial {
             values: a.values,
@@ -663,12 +671,18 @@ impl<G: Group> EvaluationDomain<G> {
     ) -> Polynomial<G::Scalar, ExtendedLagrangeCoeff> {
         assert_eq!(p.values.len(), 1 << self.k);
 
+        #[cfg(feature = "profile")]
+        let timer = start_timer!(|| format!("fft-{}", self.extended_len()));
+
         let mut a = Vec::with_capacity(self.extended_len());
         a.extend(&p.values);
 
         self.distribute_powers_zeta(&mut a, true);
         a.resize(self.extended_len(), G::Scalar::zero());
         self.fft_inner(&mut a, self.extended_omega, self.extended_k, false);
+
+        #[cfg(feature = "profile")]
+        end_timer!(timer);
 
         Polynomial {
             values: a,
