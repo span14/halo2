@@ -673,13 +673,13 @@ where
         // We query the h(X) polynomial at x
         .chain(vanishing.open(x));
 
-    let phase10 = start_timer!(|| "Phase 10: multiopen");
+    let phase10_timer = start_timer!(|| "Phase 10: multiopen");
     let prover = P::new(params);
     let proof = prover
         .create_proof(rng, transcript, instances)
         .map_err(|_| Error::ConstraintSystemFailure);
-    end_timer!(phase10);
+    end_timer!(phase10_timer);
 
-    end_timer!(prove_timer);
+    end_timer!(prove_time);
     proof
 }
