@@ -5,6 +5,8 @@ use crate::{
     arithmetic::{best_multiexp, parallelize, CurveAffine},
     poly::commitment::MSM,
 };
+#[cfg(feature = "profile")]
+use ark_std::{end_timer, start_timer};
 use group::{Curve, Group};
 use halo2curves::pairing::{Engine, MillerLoopResult, MultiMillerLoop};
 
@@ -161,10 +163,18 @@ impl<'a, E: MultiMillerLoop + Debug> DualMSM<'a, E> {
         );
         let terms = &[term_1, term_2];
 
-        bool::from(
+        #[cfg(feature = "profile")]
+        let pairing_timer = start_timer!(|| "pairing");
+
+        let res = bool::from(
             E::multi_miller_loop(&terms[..])
                 .final_exponentiation()
                 .is_identity(),
-        )
+        );
+
+        #[cfg(feature = "profile")]
+        end_timer!(pairing_timer);
+        
+        res
     }
 }
