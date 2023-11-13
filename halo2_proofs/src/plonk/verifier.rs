@@ -1,3 +1,4 @@
+use ark_std::{end_timer, start_timer};
 use ff::{Field, FromUniformBytes, WithSmallOrderMulGroup};
 use group::Curve;
 use rand_core::RngCore;
@@ -41,12 +42,17 @@ pub fn verify_proof<
 where
     Scheme::Scalar: WithSmallOrderMulGroup<3> + FromUniformBytes<64>,
 {
+
+    let verify_time = start_timer!(|| "Verifier");
+
     // Check that instances matches the expected number of instance columns
     for instances in instances.iter() {
         if instances.len() != vk.cs.num_instance_columns {
             return Err(Error::InvalidInstances);
         }
     }
+
+    let phase1_time = start_timer!(|| "Phase 1: Preprocessed");
 
     let instance_commitments = if V::QUERY_INSTANCE {
         instances
@@ -390,13 +396,19 @@ where
         .chain(permutations_common.queries(&vk.permutation, x))
         .chain(vanishing.queries(x));
 
+    end_timer!(phase1_time);
     // We are now convinced the circuit is satisfied so long as the
     // polynomial commitments open to the correct values.
 
     let verifier = V::new(params);
-    strategy.process(|msm| {
+    let phase2_time = start_timer!(|| "Phase 2: Pairing");
+        
+    let res = strategy.process(|msm| {
         verifier
             .verify_proof(transcript, queries, msm)
             .map_err(|_| Error::Opening)
-    })
+    });
+    end_timer!(phase2_time);
+    end_timer!(verify_time);
+    res
 }

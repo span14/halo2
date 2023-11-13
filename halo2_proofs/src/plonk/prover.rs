@@ -1,3 +1,4 @@
+use ark_std::{end_timer, start_timer};
 use ff::{Field, FromUniformBytes, PrimeField, WithSmallOrderMulGroup};
 use group::Curve;
 use halo2curves::CurveExt;
@@ -57,6 +58,8 @@ pub fn create_proof<
 where
     Scheme::Scalar: WithSmallOrderMulGroup<3> + FromUniformBytes<64>,
 {
+    let prove_time = start_timer!(|| "Prover");
+
     for instance in instances.iter() {
         if instance.len() != pk.vk.cs.num_instance_columns {
             return Err(Error::InvalidInstances);
@@ -287,6 +290,7 @@ where
         }
     }
 
+    let phase1_time = start_timer!(|| "Phase 1: Witness assignment and MSM commitments");
     let (advice, challenges) = {
         let mut advice = vec![
             AdviceSingle::<Scheme::Curve, LagrangeCoeff> {
@@ -405,7 +409,9 @@ where
 
         (advice, challenges)
     };
+    end_timer!(phase1_time);
 
+    let phase2_time = start_timer!(|| "Phase 2: Lookup commit permuted");
     // Sample theta challenge for keeping lookup columns linearly independent
     let theta: ChallengeTheta<_> = transcript.squeeze_challenge_scalar();
 
@@ -435,7 +441,9 @@ where
                 .collect()
         })
         .collect::<Result<Vec<_>, _>>()?;
+    end_timer!(phase2_time);
 
+    let phase3_time = start_timer!(|| "Phase 3: Commit to permutations");
     // Sample beta challenge
     let beta: ChallengeBeta<_> = transcript.squeeze_challenge_scalar();
 
@@ -461,7 +469,9 @@ where
             )
         })
         .collect::<Result<Vec<_>, _>>()?;
+    end_timer!(phase3_time);
 
+    let phase4_time = start_timer!(|| "Phase 4: Lookup commit product");
     let lookups: Vec<Vec<lookup::prover::Committed<Scheme::Curve>>> = lookups
         .into_iter()
         .map(|lookups| -> Result<Vec<_>, _> {
@@ -472,13 +482,17 @@ where
                 .collect::<Result<Vec<_>, _>>()
         })
         .collect::<Result<Vec<_>, _>>()?;
+    end_timer!(phase4_time);
 
+    let phase5_time = start_timer!(|| "Phase 5: Commit to vanishing argument's random poly");
     // Commit to the vanishing argument's random polynomial for blinding h(x_3)
     let vanishing = vanishing::Argument::commit(params, domain, &mut rng, transcript)?;
 
     // Obtain challenge for keeping all separate gates linearly independent
     let y: ChallengeY<_> = transcript.squeeze_challenge_scalar();
+    end_timer!(phase5_time);
 
+    let phase6_time = start_timer!(|| "Phase 6: Calculate advice polys (fft)");
     // Calculate the advice polys
     let advice: Vec<AdviceSingle<Scheme::Curve, Coeff>> = advice
         .into_iter()
@@ -498,6 +512,10 @@ where
         )
         .collect();
 
+
+    end_timer!(phase6_time);
+
+    let phase7_time = start_timer!(|| "Phase 7: Evaluate h(X)");
     // Evaluate the h(X) polynomial
     let h_poly = pk.ev.evaluate_h(
         pk,
@@ -517,10 +535,14 @@ where
         &lookups,
         &permutations,
     );
+    end_timer!(phase7_time);
 
+    let phase8_time = start_timer!(|| "Phase 8: Commit to vanishing argument's h(X) commitments");
     // Construct the vanishing argument's h(X) commitments
     let vanishing = vanishing.construct(params, domain, h_poly, &mut rng, transcript)?;
+    end_timer!(phase8_time);
 
+    let phase9_time = start_timer!(|| "Phase 9: Commit to vanishing argument's h(X) commitments");
     let x: ChallengeX<_> = transcript.squeeze_challenge_scalar();
     let xn = x.pow(&[params.n() as u64, 0, 0, 0]);
 
@@ -601,6 +623,7 @@ where
                 .collect::<Result<Vec<_>, _>>()
         })
         .collect::<Result<Vec<_>, _>>()?;
+    end_timer!(phase9_time);
 
     let instances = instance
         .iter()
@@ -650,8 +673,13 @@ where
         // We query the h(X) polynomial at x
         .chain(vanishing.open(x));
 
+    let phase10 = start_timer!(|| "Phase 10: multiopen");
     let prover = P::new(params);
-    prover
+    let proof = prover
         .create_proof(rng, transcript, instances)
-        .map_err(|_| Error::ConstraintSystemFailure)
+        .map_err(|_| Error::ConstraintSystemFailure);
+    end_timer!(phase10);
+
+    end_timer!(prove_timer);
+    proof
 }
