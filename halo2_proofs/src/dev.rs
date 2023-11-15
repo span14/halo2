@@ -691,6 +691,7 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
             .collect::<Vec<_>>();
 
         // Fixed columns contain no blinding factors.
+        println!("Pre phase: {}", cs.num_fixed_columns);
         let fixed = vec![vec![CellValue::Unassigned; n]; cs.num_fixed_columns];
         let selectors = vec![vec![false; n]; cs.num_selectors];
         // Advice columns contain blinding factors.
@@ -749,13 +750,14 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
 
         let (cs, selector_polys) = prover.cs.compress_selectors(prover.selectors.clone());
 
-        #[cfg(feature = "stats")] 
+        #[cfg(feature = "stats")]
         {
+
             println!("num_fixed_column: {}", cs.num_fixed_columns);
             println!("num_advice_columns: {}", cs.num_advice_columns);
             println!("num_instance_columns: {}", cs.num_instance_columns);
             println!("num_selector_columns: {}", cs.num_selectors);
-            println!("num_gate_types: {}", cs.gates.len());
+
             println!("num_gate_queried: {:?}", cs.gates.iter().map(|x| {
                 let count = prover.regions.iter().fold(0, |acc, r| {
                     let appearance = r
@@ -768,26 +770,19 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
                 });
                 (x.name(), count, x.polynomials().iter().map(|y| y.degree()).collect::<Vec<_>>())
             }).collect::<Vec<_>>());
-            // Not Confirmed on this one
-            println!("num_lookups: {:?}", cs.lookups.iter().map(|x| x.input_expressions.len()).collect::<Vec<_>>());
-            println!("fixed_columns_rows: {:?}", prover.fixed.iter().map(|x| x.len()).collect::<Vec<_>>());
-            println!("advice_columns_rows: {:?}", prover.advice.iter().map(|x| x.len()).collect::<Vec<_>>());
             println!(
                 "assigned_fixed_columns_rows: {:?}",
                 prover.fixed.iter().map(|x| x.iter().filter(|y| matches!(y, CellValue::Assigned {..} )).collect::<Vec<_>>().len()).collect::<Vec<_>>()
             );
-    
             println!(
                 "assigned_advice_columns_rows: {:?}", 
                 prover.advice.iter().map(|x| x.iter().filter(|y| matches!(y, CellValue::Assigned {..} )).collect::<Vec<_>>().len()).collect::<Vec<_>>()
             );
-    
-            println!("instance_columns_rows: {:?}", prover.instance.iter().map(|x| x.len()).collect::<Vec<_>>());
             println!(
                 "permutations: {}", 
-                prover.permutation.mapping().iter().enumerate().fold(0, |acc, (c, p)| {
-                    p.iter().enumerate().filter(|(r, ce)| {
-                        (c, *r) != (ce.0, ce.1)
+                prover.permutation.mapping().iter().enumerate().fold(0, |acc, (c, x)| {
+                    x.iter().enumerate().filter(|(r, ce)| {
+                        (c, *r) != (ce.0, ce.1) 
                     }).collect::<Vec<_>>().len() + acc
                 })
             );
@@ -802,6 +797,7 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
             }
             v
         }));
+
 
         
         
@@ -1012,7 +1008,6 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
                             &Value::Real(F::ZERO),
                         )
                     };
-
                     assert!(lookup.table_expressions.len() == lookup.input_expressions.len());
                     assert!(self.usable_rows.end > 0);
 
@@ -1033,6 +1028,10 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
                         .iter()
                         .map(Expression::identifier)
                         .collect::<Vec<_>>();
+
+                    #[cfg(feature = "stats")]
+                    let table_identifer_copy = table_identifier.clone();
+
                     if table_identifier != cached_table_identifier {
                         cached_table_identifier = table_identifier;
 
@@ -1079,6 +1078,8 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
                         .collect();
                     inputs.sort_unstable();
 
+                    #[cfg(feature = "stats")]
+                    println!("table_identifier: {:?}, input_size: {}", table_identifer_copy, inputs.len());
                     let mut i = 0;
                     inputs
                         .iter()
