@@ -756,7 +756,7 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
             println!("num_advice_columns: {}", cs.num_advice_columns);
             println!("num_instance_columns: {}", cs.num_instance_columns);
             println!("num_selector_columns: {}", cs.num_selectors);
-            println!("num_useable_rows: {}", cs.usable_rows.len());
+            println!("num_useable_rows: {}", prover.usable_rows.len());
             println!("num_gate_queried: {:?}", cs.gates.iter().map(|x| {
                 let count = prover.regions.iter().fold(0, |acc, r| {
                     let appearance = r
