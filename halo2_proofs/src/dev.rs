@@ -706,7 +706,7 @@ impl<F: FieldExt> MockProver<F> {
             );
             println!(
                 "assigned_advice_columns_rows: {:?}", 
-                prover.advice.iter().map(|x| x.iter().filter(|y| matches!(y, CellValue::Assigned {..} )).collect::<Vec<_>>().len()).collect::<Vec<_>>()
+                prover.advice.iter().map(|x| x.iter().filter(|y| matches!(y, AdviceCellValue::Assigned {..} )).collect::<Vec<_>>().len()).collect::<Vec<_>>()
             );
             println!(
                 "permutations: {}", 
