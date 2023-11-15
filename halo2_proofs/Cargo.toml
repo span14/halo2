@@ -83,6 +83,7 @@ gadget-traces = ["backtrace"]
 sanity-checks = []
 batch = ["rand/getrandom"]
 profile = ["dep:ark-std"]
+stats = []
 
 [lib]
 bench = false
