@@ -691,7 +691,6 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
             .collect::<Vec<_>>();
 
         // Fixed columns contain no blinding factors.
-        println!("Pre phase: {}", cs.num_fixed_columns);
         let fixed = vec![vec![CellValue::Unassigned; n]; cs.num_fixed_columns];
         let selectors = vec![vec![false; n]; cs.num_selectors];
         // Advice columns contain blinding factors.
@@ -798,9 +797,6 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
             v
         }));
 
-
-        
-        
 
         Ok(prover)
     }
