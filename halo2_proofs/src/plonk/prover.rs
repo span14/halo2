@@ -11,7 +11,7 @@ use std::marker::PhantomData;
 use std::ops::RangeTo;
 use std::rc::Rc;
 use std::sync::atomic::AtomicUsize;
-use std::time::Instant;
+use std::time::{Instant, Duration};
 use std::{collections::HashMap, iter, mem, sync::atomic::Ordering};
 
 use super::{
@@ -410,9 +410,11 @@ where
                 "New challenge API doesn't work with multiple circuits yet"
             );
         }
+        let mut witness_filling = Duration::default();
         for ((circuit, instances), instance_single) in
             circuits.iter().zip(instances).zip(instance.iter())
         {
+            let wf_start = Instant::now();
             let mut witness: WitnessCollection<Scheme, P, _, E, _, _> = WitnessCollection {
                 params,
                 current_phase: phases[0],
@@ -452,6 +454,7 @@ where
                     witness.next_phase();
                 }
             }
+            witness_filling += wf_start.elapsed();
             advice.push(witness.advice_single);
         }
 
@@ -459,6 +462,9 @@ where
         let challenges = (0..meta.num_challenges)
             .map(|index| challenges.remove(&index).unwrap())
             .collect::<Vec<_>>();
+
+        #[cfg(feature = "zkml")]
+        println!("Witness Filling: {:?}", witness_filling);
 
         (advice, challenges)
     };

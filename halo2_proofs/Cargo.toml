@@ -84,6 +84,7 @@ sanity-checks = []
 batch = ["rand/getrandom"]
 profile = ["dep:ark-std"]
 stats = []
+zkml = []
 
 [lib]
 bench = false
