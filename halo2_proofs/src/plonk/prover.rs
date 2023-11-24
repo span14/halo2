@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 use std::env::var;
 use std::ops::RangeTo;
 use std::sync::atomic::AtomicUsize;
-use std::time::Instant;
+use std::time::{Instant, Duration};
 use std::{collections::HashMap, iter, mem, sync::atomic::Ordering};
 
 use super::{
@@ -301,6 +301,8 @@ where
         ];
         let mut challenges = HashMap::<usize, Scheme::Scalar>::with_capacity(meta.num_challenges);
 
+        let mut witness_filling = Duration::default();
+
         let unusable_rows_start = params.n() as usize - (meta.blinding_factors() + 1);
         for current_phase in pk.vk.cs.phases() {
             let column_indices = meta
@@ -319,6 +321,8 @@ where
             for ((circuit, advice), instances) in
                 circuits.iter().zip(advice.iter_mut()).zip(instances)
             {
+                let wf_start = Instant::now();
+
                 let mut witness = WitnessCollection {
                     k: params.k(),
                     current_phase,
@@ -340,6 +344,8 @@ where
                     config.clone(),
                     meta.constants.clone(),
                 )?;
+
+                witness_filling += wf_start.elapsed();
 
                 let mut advice_values = batch_invert_assigned::<Scheme::Scalar>(
                     witness
@@ -406,6 +412,9 @@ where
         let challenges = (0..meta.num_challenges)
             .map(|index| challenges.remove(&index).unwrap())
             .collect::<Vec<_>>();
+
+        #[cfg(feature = "zkml")]
+        println!("Witness Filling: {:?}", witness_filling);
 
         (advice, challenges)
     };
