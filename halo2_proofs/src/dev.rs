@@ -706,6 +706,45 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
         }
 
         let (cs, selector_polys) = prover.cs.compress_selectors(prover.selectors.clone());
+
+        #[cfg(feature = "stats")]
+        {
+
+            println!("num_fixed_column: {}", cs.num_fixed_columns);
+            println!("num_advice_columns: {}", cs.num_advice_columns);
+            println!("num_instance_columns: {}", cs.num_instance_columns);
+            println!("num_selector_columns: {}", cs.num_selectors);
+            println!("num_useable_rows: {}", prover.usable_rows.len());
+            println!("num_gate_queried: {:?}", cs.gates.iter().map(|x| {
+                let count = prover.regions.iter().fold(0, |acc, r| {
+                    let appearance = r
+                        .enabled_selectors
+                        .iter()
+                        .filter(|(s, _)| x.queried_selectors().contains(s))
+                        .fold(0, |acc, (_, p)| acc + p.len());
+
+                    appearance + acc
+                });
+                (x.name(), count, x.polynomials().iter().map(|y| y.degree()).collect::<Vec<_>>())
+            }).collect::<Vec<_>>());
+            println!(
+                "assigned_fixed_columns_rows: {:?}",
+                prover.fixed.iter().map(|x| x.iter().filter(|y| matches!(y, CellValue::Assigned {..} )).collect::<Vec<_>>().len()).collect::<Vec<_>>()
+            );
+            println!(
+                "assigned_advice_columns_rows: {:?}", 
+                prover.advice.iter().map(|x| x.iter().filter(|y| matches!(y, CellValue::Assigned {..} )).collect::<Vec<_>>().len()).collect::<Vec<_>>()
+            );
+            println!(
+                "permutations: {}", 
+                prover.permutation.mapping().iter().enumerate().fold(0, |acc, (c, x)| {
+                    x.iter().enumerate().filter(|(r, ce)| {
+                        (c, *r) != (ce.0, ce.1) 
+                    }).collect::<Vec<_>>().len() + acc
+                })
+            );
+        }
+    
         prover.cs = cs;
         prover.fixed.extend(selector_polys.into_iter().map(|poly| {
             let mut v = vec![CellValue::Unassigned; n];
@@ -1500,6 +1539,10 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
                         .iter()
                         .map(Expression::identifier)
                         .collect::<Vec<_>>();
+
+                    #[cfg(feature = "stats")]
+                    let table_identifer_copy = table_identifier.clone();
+
                     if table_identifier != cached_table_identifier {
                         cached_table_identifier = table_identifier;
 
@@ -1550,6 +1593,9 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
                                 .collect();
                             inputs.par_sort_unstable();
 
+                            #[cfg(feature = "stats")]
+                            println!("table_identifier: {:?}, input_size: {}", table_identifer_copy, inputs.len());
+                            
                             inputs
                                 .par_iter()
                                 .filter_map(move |(input, input_row)| {
