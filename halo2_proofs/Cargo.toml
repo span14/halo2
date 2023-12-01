@@ -101,6 +101,7 @@ circuit-params = []
 counter = ["lazy_static"]
 icicle_gpu = ["icicle", "rustacuda"]
 mv-lookup = []
+stats = []
 
 [lib]
 bench = false
