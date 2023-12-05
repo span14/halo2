@@ -737,8 +737,8 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
             );
             println!(
                 "permutations: {}", 
-                prover.permutation.mapping().iter().enumerate().fold(0, |acc, (c, x)| {
-                    x.iter().enumerate().filter(|(r, ce)| {
+                prover.permutation.mapping().enumerate().fold(0, |acc, (c, x)| {
+                    x.enumerate().filter(|(r, ce)| {
                         (c, *r) != (ce.0, ce.1) 
                     }).collect::<Vec<_>>().len() + acc
                 })
