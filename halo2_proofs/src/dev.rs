@@ -1662,6 +1662,10 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
                         .iter()
                         .map(Expression::identifier)
                         .collect::<Vec<_>>();
+
+                    #[cfg(feature = "stats")]
+                    let table_identifer_copy = table_identifier.clone();
+
                     if table_identifier != cached_table_identifier {
                         cached_table_identifier = table_identifier;
 
@@ -1711,7 +1715,9 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
                                 })
                                 .collect();
                             inputs.par_sort_unstable();
-
+                            #[cfg(feature = "stats")]
+                            println!("table_identifier: {:?}, input_size: {}", table_identifer_copy, inputs.len());
+                            
                             inputs
                                 .par_iter()
                                 .filter_map(move |(input, input_row)| {
@@ -1762,6 +1768,10 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
                         .iter()
                         .map(Expression::identifier)
                         .collect::<Vec<_>>();
+
+                    #[cfg(feature = "stats")]
+                    let table_identifer_copy = table_identifier.clone();
+
                     if table_identifier != cached_table_identifier {
                         cached_table_identifier = table_identifier;
 
@@ -1808,6 +1818,9 @@ impl<F: FromUniformBytes<64> + Ord> MockProver<F> {
                         })
                         .collect();
                     inputs.par_sort_unstable();
+                    
+                    #[cfg(feature = "stats")]
+                    println!("table_identifier: {:?}, input_size: {}", table_identifer_copy, inputs.len());
 
                     inputs
                         .par_iter()
