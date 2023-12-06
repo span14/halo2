@@ -96,6 +96,7 @@ sanity-checks = []
 batch = ["rand_core/getrandom"]
 circuit-params = []
 counter = ["lazy_static"]
+stats = []
 
 [lib]
 bench = false
