@@ -3,28 +3,28 @@
 //! with the intention of construction of parameters and are not used in the
 //! actual permutation process.
 
-use halo2curves::ff::PrimeField;
+use halo2curves::FieldExt;
 
 #[derive(PartialEq, Debug, Clone)]
-pub(crate) struct Matrix<F: PrimeField, const T: usize>(pub(crate) [[F; T]; T]);
+pub(crate) struct Matrix<F: FieldExt, const T: usize>(pub(crate) [[F; T]; T]);
 
-impl<F: PrimeField, const T: usize> Default for Matrix<F, T> {
+impl<F: FieldExt, const T: usize> Default for Matrix<F, T> {
     fn default() -> Self {
-        Matrix([[F::ZERO; T]; T])
+        Matrix([[F::zero(); T]; T])
     }
 }
 
-impl<F: PrimeField, const T: usize> Matrix<F, T> {
+impl<F: FieldExt, const T: usize> Matrix<F, T> {
     #[inline]
     pub(crate) fn zero_matrix() -> Self {
-        Self([[F::ZERO; T]; T])
+        Self([[F::zero(); T]; T])
     }
 
     #[inline]
     pub(crate) fn identity() -> Self {
         let mut m = Self::zero_matrix();
         for i in 0..T {
-            m.set(i, i, F::ONE)
+            m.set(i, i, F::one())
         }
         m
     }
@@ -72,7 +72,7 @@ impl<F: PrimeField, const T: usize> Matrix<F, T> {
     }
 
     pub(crate) fn mul_vector(&self, v: &[F; T]) -> [F; T] {
-        let mut result = [F::ZERO; T];
+        let mut result = [F::zero(); T];
         for (row, cell) in self.0.iter().zip(result.iter_mut()) {
             for (a_i, v_i) in row.iter().zip(v.iter()) {
                 *cell += *v_i * *a_i;
