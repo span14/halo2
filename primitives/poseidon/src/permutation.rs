@@ -1,7 +1,7 @@
 use crate::spec::{Spec, State};
-use halo2curves::FieldExt;
+use halo2curves::ff::PrimeField;
 
-impl<F: FieldExt, const T: usize, const RATE: usize> Spec<F, T, RATE> {
+impl<F: PrimeField, const T: usize, const RATE: usize> Spec<F, T, RATE> {
     /// Applies the Poseidon permutation to the given state
     pub fn permute(&self, state: &mut State<F, T>) {
         let r_f = self.r_f / 2;
@@ -50,13 +50,13 @@ impl<F: FieldExt, const T: usize, const RATE: usize> Spec<F, T, RATE> {
 mod tests {
     use super::State;
     use crate::spec::{tests::SpecRef, Spec};
-    use group::ff::PrimeField;
+    // use group::ff::PrimeField;
     use halo2curves::bn256::Fr;
-    use halo2curves::FieldExt;
+    use halo2curves::ff::PrimeField;
 
     /// We want to keep unoptimized poseidion construction and permutation to
     /// cross test with optimized one
-    impl<F: FieldExt, const T: usize, const RATE: usize> SpecRef<F, T, RATE> {
+    impl<F: PrimeField, const T: usize, const RATE: usize> SpecRef<F, T, RATE> {
         fn permute(&self, state: &mut State<F, T>) {
             let (r_f, r_p) = (self.r_f / 2, self.r_p);
 

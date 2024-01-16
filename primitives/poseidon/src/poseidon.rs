@@ -1,16 +1,16 @@
 use crate::{Spec, State};
-use halo2curves::FieldExt;
+use halo2curves::ff::{PrimeField, FromUniformBytes};
 
 /// Poseidon hasher that maintains state and inputs and yields single element
 /// output when desired
 #[derive(Debug, Clone)]
-pub struct Poseidon<F: FieldExt, const T: usize, const RATE: usize> {
+pub struct Poseidon<F: PrimeField + FromUniformBytes<64>, const T: usize, const RATE: usize> {
     state: State<F, T>,
     spec: Spec<F, T, RATE>,
     absorbing: Vec<F>,
 }
 
-impl<F: FieldExt, const T: usize, const RATE: usize> Poseidon<F, T, RATE> {
+impl<F: PrimeField + FromUniformBytes<64>, const T: usize, const RATE: usize> Poseidon<F, T, RATE> {
     /// Constructs a clear state poseidon instance
     pub fn new(r_f: usize, r_p: usize) -> Self {
         Self {
@@ -53,7 +53,7 @@ impl<F: FieldExt, const T: usize, const RATE: usize> Poseidon<F, T, RATE> {
         }
         // Add the finishing sign of the variable length hashing. Note that this mut
         // also apply when absorbing line is empty
-        last_chunk.push(F::one());
+        last_chunk.push(F::ONE);
         // Add the last chunk of inputs to the state for the final permutation cycle
 
         for (input_element, state) in last_chunk.iter().zip(self.state.0.iter_mut().skip(1)) {
@@ -71,7 +71,7 @@ impl<F: FieldExt, const T: usize, const RATE: usize> Poseidon<F, T, RATE> {
 
 #[test]
 fn test_padding() {
-    use group::ff::Field;
+    use halo2curves::ff::Field;
     use halo2curves::bn256::Fr;
 
     const R_F: usize = 8;
